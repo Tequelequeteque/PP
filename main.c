@@ -80,10 +80,19 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
         }
         rewind(fp);
     }
-
+    double raioMedio = .0;
     for (int i = 0; i < QTD_CENTROIDES; i++) {
-        printf("Latitude:%.2lF,Longitude:%.2lF,Erro:%lF\n", centroides[i][LATITUDE], centroides[i][LONGITUDE], centroides[i][ERRO_ACUMULADO]);
+        raioMedio += centroides[i][ERRO_ACUMULADO];
     }
+    raioMedio = raioMedio / QTD_CENTROIDES;
+    double erro = .0;
+    for (int i = 0; i < QTD_CENTROIDES; i++) {
+        erro += pow(centroides[i][ERRO_ACUMULADO] - raioMedio, 2);
+    }
+    printf("Erro:%lF\n",erro);
+//    for (int i = 0; i < QTD_CENTROIDES; i++) {
+//        printf("Latitude:%.2lF,Longitude:%.2lF,Erro:%lF\n", centroides[i][LATITUDE], centroides[i][LONGITUDE], centroides[i][ERRO_ACUMULADO]);
+//    }
     printf("\n");
 
 }
