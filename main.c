@@ -9,10 +9,10 @@
 #define END_OF_FILE "FIM"
 #define SEED 666
 
-#define ITERACOES 100
-#define QTD_CENTROIDES 16
+#define ITERACOES 20
+#define QTD_CENTROIDES 20
 
-#define ARQUIVO "../coordinates.csv"
+#define ARQUIVO "test.csv"
 #define PTS_CENTROIDES "coordinates_centroides.csv"
 
 #define QTD_PARAMETROS 6
