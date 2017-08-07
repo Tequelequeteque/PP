@@ -10,9 +10,10 @@
 #define SEED 666
 
 #define ITERACOES 100
-#define QTD_CENTROIDES 20
+#define QTD_CENTROIDES 16
 
-#define ARQUIVO "test.csv"
+#define ARQUIVO "../coordinates.csv"
+#define PTS_CENTROIDES "coordinates_centroides.csv"
 
 #define QTD_PARAMETROS 6
 #define LATITUDE 0
@@ -20,7 +21,7 @@
 #define LATITUDE_ACUMULADA 2
 #define LONGITUDE_ACUMULADA 3
 #define QTD_PONTOS 4
-#define ERRO_ACUMULADO 5
+#define SSE 5
 
 double distancia(double latitude_centroide, double longitude_centroide, double latitude_ponto, double longitude_ponto) {
     double latitude = pow(latitude_centroide - latitude_ponto, 2);
@@ -31,18 +32,17 @@ double distancia(double latitude_centroide, double longitude_centroide, double l
 void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
     char mensagem[MESSAGE_SIZE];
     FILE *fp = fopen(ARQUIVO, "r");
+    FILE *pt_centroides = fopen(PTS_CENTROIDES, "r");
     int slave;
     double centroides[QTD_CENTROIDES][QTD_PARAMETROS];
     double aux[QTD_CENTROIDES][QTD_PARAMETROS];
-    srand(SEED);
-    fscanf(fp, " %s", mensagem); //descarte
+    //    srand(SEED);
     for (int i = 0; i < QTD_CENTROIDES; i++) {//melhorar random?
-        fscanf(fp, " %lF %c %lF", &centroides[i][LATITUDE], mensagem, &centroides[i][LONGITUDE]);
+        fscanf(pt_centroides, " %lF %c %lF", &centroides[i][LATITUDE], mensagem, &centroides[i][LONGITUDE]);
         centroides[i][LATITUDE_ACUMULADA] = 0;
         centroides[i][LONGITUDE_ACUMULADA] = 0;
         centroides[i][QTD_PONTOS] = 0;
     }
-    rewind(fp);
     for (int i = 0; i < ITERACOES; i++) {
         MPI_Bcast(centroides, QTD_CENTROIDES*QTD_PARAMETROS, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
         fscanf(fp, " %s", mensagem); //descarte
@@ -59,7 +59,7 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
         for (int j = qtdProcessos - 1; j > 0; j--) {
             MPI_Recv(aux, QTD_CENTROIDES*QTD_PARAMETROS, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, status);
             for (int i = 0; i < QTD_CENTROIDES; i++) {
-                centroides[i][ERRO_ACUMULADO] += aux[i][ERRO_ACUMULADO];
+                centroides[i][SSE] += aux[i][SSE];
                 centroides[i][LATITUDE_ACUMULADA] += aux[i][LATITUDE_ACUMULADA];
                 centroides[i][LONGITUDE_ACUMULADA] += aux[i][LONGITUDE_ACUMULADA];
                 centroides[i][QTD_PONTOS] += aux[i][QTD_PONTOS];
@@ -69,10 +69,10 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
             if (centroides[j][QTD_PONTOS] > 0) {
                 centroides[j][LATITUDE] = centroides[j][LATITUDE_ACUMULADA] / centroides[j][QTD_PONTOS];
                 centroides[j][LONGITUDE] = centroides[j][LONGITUDE_ACUMULADA] / centroides[j][QTD_PONTOS];
-                centroides[j][ERRO_ACUMULADO] = centroides[j][ERRO_ACUMULADO] / centroides[j][QTD_PONTOS];
+                //                centroides[j][SSE] = centroides[j][SSE] / centroides[j][QTD_PONTOS];
             }
             if (i < ITERACOES - 1) {
-                centroides[j][ERRO_ACUMULADO] = 0;
+                centroides[j][SSE] = 0;
                 centroides[j][LATITUDE_ACUMULADA] = 0;
                 centroides[j][LONGITUDE_ACUMULADA] = 0;
                 centroides[j][QTD_PONTOS] = 0;
@@ -80,20 +80,12 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
         }
         rewind(fp);
     }
-    double raioMedio = .0;
+    double sseGlobal = .0;
     for (int i = 0; i < QTD_CENTROIDES; i++) {
-        raioMedio += centroides[i][ERRO_ACUMULADO];
+        sseGlobal += centroides[i][SSE];
+        printf("Latitude:%.2lF,Longitude:%.2lF\n", centroides[i][LATITUDE], centroides[i][LONGITUDE]);
     }
-    raioMedio = raioMedio / QTD_CENTROIDES;
-    double erro = .0;
-    for (int i = 0; i < QTD_CENTROIDES; i++) {
-        erro += pow(centroides[i][ERRO_ACUMULADO] - raioMedio, 2);
-    }
-    printf("Erro:%lF\n",erro);
-//    for (int i = 0; i < QTD_CENTROIDES; i++) {
-//        printf("Latitude:%.2lF,Longitude:%.2lF,Erro:%lF\n", centroides[i][LATITUDE], centroides[i][LONGITUDE], centroides[i][ERRO_ACUMULADO]);
-//    }
-    printf("\n");
+    printf("Erro:%lF\n\n", sseGlobal);
 
 }
 
@@ -117,7 +109,7 @@ void slave(int myID, int qtdProcessos, MPI_Request *req, MPI_Status * status) {
                         aux = i;
                     }
                 }
-                centroides[aux][ERRO_ACUMULADO] += menorDistancia;
+                centroides[aux][SSE] += pow(menorDistancia, 2);
                 centroides[aux][LATITUDE_ACUMULADA] += latitude;
                 centroides[aux][LONGITUDE_ACUMULADA] += longitude;
                 centroides[aux][QTD_PONTOS] += 1;
