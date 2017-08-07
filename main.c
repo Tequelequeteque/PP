@@ -43,6 +43,7 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
         centroides[i][LONGITUDE_ACUMULADA] = 0;
         centroides[i][QTD_PONTOS] = 0;
     }
+    fclose(pt_centroides);
     for (int i = 0; i < ITERACOES; i++) {
         MPI_Bcast(centroides, QTD_CENTROIDES*QTD_PARAMETROS, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
         fscanf(fp, " %s", mensagem); //descarte
@@ -86,7 +87,7 @@ void master(int myID, int qtdProcessos, MPI_Request *req, MPI_Status *status) {
         printf("Latitude:%.2lF,Longitude:%.2lF\n", centroides[i][LATITUDE], centroides[i][LONGITUDE]);
     }
     printf("Erro:%lF\n\n", sseGlobal);
-
+    fclose(fp);
 }
 
 void slave(int myID, int qtdProcessos, MPI_Request *req, MPI_Status * status) {
